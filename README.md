@@ -1,2 +1,2 @@
-# prt
-prtcreate-templates
+# prtcreate-templates
+prtcreate: templates support
