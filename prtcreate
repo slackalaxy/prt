@@ -1,0 +1,219 @@
+#!/bin/sh
+#
+# $Id: prtcreate,v 1.1.1.2 2017/04/17 02:23:32 opel Exp $
+# (c) 2003 by Martin Opel <martin@obbl-net.de>
+# (c) 2017 by The CRUX Project
+#
+# May be redistributed and modified under the terms of the GPL
+# only usable with CRUX Linux, version 1.0 or higher.
+#
+# USE AT YOUR OWN RISK
+#
+# This script creates a Pkgfile in the current working directory with
+# all necessary header information fields and an empty build() function.
+# The port name is the name of the current working directory.
+
+if [ -f Pkgfile ]; then
+	echo "Pkgfile exists!"
+	exit 1
+fi
+
+if [ -f /etc/prtcreate.conf ]; then
+	. /etc/prtcreate.conf
+fi
+
+### AUTOTOOLS template #################################################
+if [[ "$1" = "autotools" ]]; then
+cat <<EOF > Pkgfile
+# Description:
+# URL:
+# Maintainer:
+# Depends on:
+
+name=`basename $PWD`
+version=
+release=1
+source=()
+
+build() {
+
+  cd \$name-\$version
+  ./configure --prefix=/usr
+  make
+  make DESTDIR=\$PKG install
+}
+EOF
+exit 0
+fi
+
+### CMAKE template #####################################################
+if [[ "$1" = "cmake" ]]; then
+cat <<EOF > Pkgfile
+# Description:
+# URL:
+# Maintainer:$(echo " $maintainer_line")
+# Depends on:
+
+name=`basename $PWD`
+version=
+release=1
+source=()
+
+build() {
+  cd \$name-\$version
+  mkdir -p build
+  cd build
+    cmake \\
+      -D CMAKE_C_FLAGS:STRING="\$CFLAGS" \\
+      -D CMAKE_CXX_FLAGS:STRING="\$CXXFLAGS" \\
+      -D CMAKE_INSTALL_PREFIX=/usr \\
+      -D CMAKE_BUILD_TYPE=Release ..
+    make
+    make install DESTDIR=\$PKG
+  cd ..
+}
+EOF
+exit 0
+fi
+
+### MESON template #####################################################
+if [[ "$1" = "meson" ]]; then
+cat <<EOF > Pkgfile
+# Description:
+# URL:
+# Maintainer:$(echo " $maintainer_line")
+# Depends on:
+
+name=`basename $PWD`
+version=
+release=1
+source=()
+
+build() {
+  cd \$name-\$version
+  mkdir build
+  cd build
+    CFLAGS="\$CFLAGS" \\
+    CXXFLAGS="\$CXXFLAGS" \\
+    meson .. \\
+      --buildtype=release \\
+      --prefix=/usr \\
+      -Dstrip=true
+    DESTDIR=\$PKG ninja install
+  cd ..
+}
+EOF
+exit 0
+fi
+
+### NINJA template #####################################################
+if [[ "$1" = "ninja" ]]; then
+cat <<EOF > Pkgfile
+# Description:
+# URL:
+# Maintainer:$(echo " $maintainer_line")
+# Depends on:
+
+name=`basename $PWD`
+version=
+release=1
+source=()
+
+build() {
+  cmake -S \$name-\$version -B build -G Ninja \\
+    -D CMAKE_INSTALL_PREFIX=/usr \\
+    -D CMAKE_BUILD_TYPE=Release \\
+    -D CMAKE_C_FLAGS_RELEASE="\$CFLAGS" \\
+    -D CMAKE_CXX_FLAGS_RELEASE="\$CXXFLAGS" \\
+    -Wno-dev
+    cmake --build build
+    DESTDIR=\$PKG cmake --install build
+}
+EOF
+exit 0
+fi
+
+### PERL template ######################################################
+if [[ "$1" = "perl" ]]; then
+cat <<EOF > Pkgfile
+# Description:
+# URL:
+# Maintainer:$(echo " $maintainer_line")
+# Depends on:
+
+name=`basename $PWD`
+version=
+release=1
+source=()
+
+build() {
+  cd Module-\$version
+  perl Makefile.PL INSTALLDIRS=vendor
+  make
+  make DESTDIR="\$PKG" install
+
+  find \$PKG \\( -name '.packlist' -o -name '*.pod' \\) -delete
+}
+EOF
+exit 0
+fi
+
+### PYTHON template ####################################################
+if [[ "$1" = "python" ]]; then
+cat <<EOF > Pkgfile
+# Description:
+# URL:
+# Maintainer:$(echo " $maintainer_line")
+# Depends on:
+
+name=`basename $PWD`
+version=
+release=1
+source=()
+
+build() {
+  cd \$name-\$version
+  python3 setup.py install --root=\$PKG
+}
+EOF
+exit 0
+fi
+
+### R template #########################################################
+if [[ "$1" = "r" ]]; then
+cat <<EOF > Pkgfile
+# Description:
+# URL:
+# Maintainer:$(echo " $maintainer_line")
+# Depends on:
+
+name=`basename $PWD`
+version=
+release=1
+source=()
+
+build() {
+  cd Module
+  mkdir -p \$PKG/usr/lib/R/library
+  R CMD INSTALL . -l \$PKG/usr/lib/R/library
+}
+EOF
+exit 0
+fi
+
+### DEFAULT (no option) ################################################
+cat <<EOF > Pkgfile
+# Description:
+# URL:
+# Maintainer:$(echo " $maintainer_line")
+# Depends on:
+
+name=`basename $PWD`
+version=
+release=1
+source=()
+
+build() {
+	cd \$name-\$version
+}
+EOF
